@@ -1,7 +1,7 @@
 # my-Punctuator
 
 The code contained in this repository is for adding punctuations to text which does not have any punctuations such as machine transcribed text.
-This project is inspired by the work by [Ottokar Tilk et al] (http://www.isca-speech.org/archive/Interspeech_2016/pdfs/1517.PDF, https://github.com/ottokart/punctuator2).
+This project is inspired by the work by [Ottokar Tilk et al] (http://www.isca-speech.org/archive/Interspeech_2016/pdfs/1517.PDF) and [Their github repo](https://github.com/ottokart/punctuator2).
 This system is basically the same as the system described in [the paper](http://www.isca-speech.org/archive/Interspeech_2016/pdfs/1517.PDF), except that this is implemented with Keras, uses different labels, does not use the audio feature, and is designed for English text.
 
 The model, pretrained weights, and a glove word vec file can be downloaded from here:
