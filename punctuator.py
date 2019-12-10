@@ -162,6 +162,18 @@ class Punctuator:
         else:
             X[i][j] = idx
 
+    def create_data2(self, i, j, X, word):
+        """A private helper function to
+          convert word to index and store it in 2D list
+        Args:
+            i: index for i th example
+            j: index for j th word
+            X: 2D list of index to word
+            word: the j th word
+        """ 
+        word = word.lower().strip()
+        X[i][j] = word 
+
     def create_training_data(self, words, rewind_to_head=True):
         """Create training data
         Args:
@@ -192,7 +204,7 @@ class Punctuator:
 
             word = words[t]
             word, eos, last_init = self.label_data(i, j, t, Y, word, eos, last_init)
-            self.create_data(i, j, X, word)
+            self.create_data2(i, j, X, word)
 
             t += 1
             j += 1
@@ -204,6 +216,51 @@ class Punctuator:
         i += 1
 
         return X[:i], Y[:i]
+
+    def create_training_data2(self, words, rewind_to_head=True):
+        """Create training data
+        Args:
+            words: a list of word
+            rewind_to_head: a boolean value specifying whether or not
+                to rewind to the head of sentence when the end of one example
+                is reached.
+        Returns:
+            a 2D list of index to word, a 2D list of labels
+        """ 
+        m = int(len(words) / self.size + 1) * 10
+        Y = np.zeros((m, self.size, len(self.labels)))
+        X = []
+        for n in range(m):
+            X.append([None] * self.size)
+
+        i = 0
+        j = 0
+        t = 0
+        eos = False
+        last_init = 0
+        while t < len(words):
+            if j >= self.size:
+                j = 0
+                i += 1
+                if rewind_to_head:
+                    t = last_init
+                if i >= m:
+                    break
+
+            word = words[t]
+            word, eos, last_init = self.label_data(i, j, t, Y, word, eos, last_init)
+            self.create_data2(i, j, X, word)
+
+            t += 1
+            j += 1
+
+        if i < m and j < self.size:
+            while j < self.size:
+               Y[i][j][self.labels.index('NOP')] = 1
+               j += 1
+        i += 1
+
+        return np.array(X[:i]), Y[:i]
 
     def create_live_data(self, words):
         """Create data to be fed to the predictor
@@ -227,7 +284,7 @@ class Punctuator:
                     break
 
             word = words[t]
-            self.create_data(i, j, X, word)
+            self.create_data2(i, j, X, word)
 
             t += 1
             j += 1

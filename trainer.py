@@ -19,9 +19,9 @@ EMBEDDING_FILE = 'data/glove.6B.50d.txt'
 MODEL_FILE = 'data/model.json'
 WEIGHTS_FILE = 'data/model.h5'
 TEXT_FILE = 'data/training_text.txt'
-BATCH = 100 
-EPOCH = 1
-DEV_SIZE = 1
+BATCH = 128 
+EPOCH = 100
+DEV_SIZE = 100
 
 def load_text_data(textfile):
     """Read a text file containing lines of text.
@@ -54,7 +54,7 @@ def main():
 
     #create an instance of Punctutor and create training data
     punctuator = Punctuator(word_to_index, None)
-    X, Y = punctuator.create_training_data(utterances, False)
+    X, Y = punctuator.create_training_data2(utterances, False)
 
     #if a model already exists, load the model
     if os.path.isfile(MODEL_FILE):
@@ -106,7 +106,7 @@ def main():
         punctuator.check_result(prediction, dev_Y[i])
 
     #manually evaluate the model on an example
-    examples = ["good morning chairman who I saw and members of the committee it's my pleasure to be here today I'm Elizabeth Ackles director of the office of rate payer advocates and I appreciate the chance to present on oris key activities from 2017 I have a short presentation and I'm going to move through it really quickly because you've had a long morning already and be happy to answer any questions that you have"]
+    examples = ["good morning chairman who I saw and members of the committee it's my pleasure to be here today I'm Elizabeth Ackles director of the office of rate payer advocates and I appreciate the chance to present on oris key activities from 2017 I have a short presentation and I'm going to move through it really quickly because you've had a long morning already and be happy to answer any questions that you have", "this was a measure that first was introduced back in 1979 known as the International bill of rights for women it is the first and only international instrument that comprehensively addresses women's rights within political cultural economic social and family life", "I'm Elizabeth Neumann from the San Francisco Department on the status of women Sita is not just about naming equal rights for women and girls it provides a framework to identify and address inequality", "we have monitored the demographics of commissioners and board members in San Francisco to assess the equality of political opportunities and after a decade of reports women are now half of appointees but white men are still over-represented and Asian and Latina men and women are underrepresented", "when the city and county faced a 300 million dollar budget deficit in 2003 a gender analysis of budget cuts by city departments identified the disproportionate effect on women and particularly women of color in the proposed layoffs and reduction of services"]
     for example in examples:
         words = example.split()
         x = punctuator.create_live_data(words)
