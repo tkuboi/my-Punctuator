@@ -20,6 +20,33 @@ import zipfile
 import numpy as np
 import tensorflow as tf
 
+class Dataset:
+    def __init__(self, inputs=None, targets=None):
+        self.inputs = inputs
+        self.targets = targets
+
+
+def load_data(filename):
+    inputs = []
+    with open(filename) as fo:
+        for line in fo:
+            items = line.split()
+            inputs.extend([to_vector(item.replace('\n', '')) for item in items])
+    return Dataset(np.array(inputs).T, np.array(inputs).T)
+
+def to_vector(word):
+    vec = np.zeros((30, 30))
+    for i, char in enumerate(word.lower()):
+        if i == 30:
+            break
+        if char.isalpha():
+            vec[i][ord(char) - ord('a')] = 1
+        elif char == "'":
+            vec[i][26] = 1
+        elif char == "-":
+            vec[i][27] = 1
+    return vec.reshape(900)
+
 def read_glove_vecs(glove_file):
     """read glove vecs word embedding matrix from a file
 
@@ -125,9 +152,10 @@ def create_emb_matrix(word_to_index, word_to_vec_map):
             emb_matrix[index, :] = vec
     return emb_matrix
 
-def shuffle(X,Y):
+def shuffle(X,Y=None):
     #shuffle examples and labels arrays together 
     rng_state = np.random.get_state()
     np.random.shuffle(X)
-    np.random.set_state(rng_state)
-    np.random.shuffle(Y)
+    if Y is not None:
+        np.random.set_state(rng_state)
+        np.random.shuffle(Y)

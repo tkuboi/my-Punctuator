@@ -10,6 +10,7 @@ from keras.models import Model, Sequential, model_from_json
 from keras.layers import Dense, Activation, Dropout, Input, Masking, TimeDistributed, LSTM, Conv1D, Embedding, RepeatVector, Lambda, Dot, Multiply, Concatenate, Permute
 from keras.layers import GRU, Bidirectional, BatchNormalization, Reshape, Flatten, ThresholdedReLU
 from keras.optimizers import Adam
+from bidirectional_gru_with_gru import DBNCell
 
 UTTERANCE_SIZE = 200
 LABELS = ['NOP','INIT',',','.','?']
@@ -76,7 +77,7 @@ class Punctuator:
         json_file = open(filename, 'r')
         loaded_model_json = json_file.read()
         json_file.close()
-        self.__model__ = model_from_json(loaded_model_json, custom_objects={'softmax2': softmax2})
+        self.__model__ = model_from_json(loaded_model_json, custom_objects={'DBNCell': DBNCell, 'softmax2': softmax2})
 
     def load_weights(self, filename):
         """Load weights from a file
@@ -171,8 +172,8 @@ class Punctuator:
             X: 2D list of index to word
             word: the j th word
         """ 
-        word = word.lower().strip()
-        X[i][j] = word 
+        word = word.lower().strip().replace('\n', '')
+        X[i][j][:] = to_vector(word) 
 
     def create_training_data(self, words, rewind_to_head=True):
         """Create training data
@@ -186,7 +187,7 @@ class Punctuator:
         """ 
         m = int(len(words) / self.size + 1) * 10
         Y = np.zeros((m, self.size, len(self.labels)))
-        X = np.zeros((m, self.size))
+        X = np.zeros((m, self.size, 900))
 
         i = 0
         j = 0
@@ -215,52 +216,7 @@ class Punctuator:
                j += 1
         i += 1
 
-        return X[:i], Y[:i]
-
-    def create_training_data2(self, words, rewind_to_head=True):
-        """Create training data
-        Args:
-            words: a list of word
-            rewind_to_head: a boolean value specifying whether or not
-                to rewind to the head of sentence when the end of one example
-                is reached.
-        Returns:
-            a 2D list of index to word, a 2D list of labels
-        """ 
-        m = int(len(words) / self.size + 1) * 10
-        Y = np.zeros((m, self.size, len(self.labels)))
-        X = []
-        for n in range(m):
-            X.append([None] * self.size)
-
-        i = 0
-        j = 0
-        t = 0
-        eos = False
-        last_init = 0
-        while t < len(words):
-            if j >= self.size:
-                j = 0
-                i += 1
-                if rewind_to_head:
-                    t = last_init
-                if i >= m:
-                    break
-
-            word = words[t]
-            word, eos, last_init = self.label_data(i, j, t, Y, word, eos, last_init)
-            self.create_data2(i, j, X, word)
-
-            t += 1
-            j += 1
-
-        if i < m and j < self.size:
-            while j < self.size:
-               Y[i][j][self.labels.index('NOP')] = 1
-               j += 1
-        i += 1
-
-        return np.array(X[:i]), Y[:i]
+        return np.asarray(X[:i]), np.asarray(Y[:i])
 
     def create_live_data(self, words):
         """Create data to be fed to the predictor
@@ -271,7 +227,7 @@ class Punctuator:
         """
         m = int(len(words) / self.size + 1)
         Y = np.zeros((m, self.size, len(self.labels)))
-        X = np.zeros((m, self.size))
+        X = np.zeros((m, self.size, 900))
 
         i = 0
         j = 0

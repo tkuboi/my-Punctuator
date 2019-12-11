@@ -18,9 +18,9 @@ from keras.optimizers import Adam
 EMBEDDING_FILE = 'data/glove.6B.50d.txt'
 MODEL_FILE = 'data/model.json'
 WEIGHTS_FILE = 'data/model.h5'
-TEXT_FILE = 'data/training_text.txt'
+TEXT_FILE = 'data/utterances.txt'
 BATCH = 128 
-EPOCH = 100
+EPOCH = 1000
 DEV_SIZE = 100
 
 def load_text_data(textfile):
@@ -43,26 +43,27 @@ def main():
     """
 
     #read golve vecs
-    words, word_to_index, index_to_word, word_to_vec_map = read_glove_vecs(EMBEDDING_FILE)
+    #words, word_to_index, index_to_word, word_to_vec_map = read_glove_vecs(EMBEDDING_FILE)
     #create word embedding matrix
-    embedding_matrix = create_emb_matrix(word_to_index, word_to_vec_map)
-    print('shape of embedding_matrix:', embedding_matrix.shape)
+    #embedding_matrix = create_emb_matrix(word_to_index, word_to_vec_map)
+    embedding_matrix = None 
+    #print('shape of embedding_matrix:', embedding_matrix.shape)
 
     #load trainig text from a file
     utterances = load_text_data(TEXT_FILE)
-    print(utterances[0])
-
-    #create an instance of Punctutor and create training data
-    punctuator = Punctuator(word_to_index, None)
-    X, Y = punctuator.create_training_data2(utterances, False)
+    punctuator = Punctuator(None, None)
+    X, Y = punctuator.create_training_data(utterances[:3], False)
+    print(X.shape)
+    print(X.shape[1])
+    print(Y.shape)
 
     #if a model already exists, load the model
-    if os.path.isfile(MODEL_FILE):
+    if os.path.isfile(MODEL_FILE) and False:
         punctuator.load_model(MODEL_FILE)
     else: 
         model = BidirectionalGruWithGru.create_model(
-            input_shape=(X.shape[1], ), embedding_matrix=embedding_matrix,
-            vocab_len=len(word_to_index), n_d1=128, n_d2=128, n_c=len(punctuator.labels))
+            input_shape=(X.shape[1], X.shape[2], ), embedding_matrix=None,
+            vocab_len=0, n_d1=128, n_d2=128, n_c=len(punctuator.labels))
         print(model.summary())
         punctuator.__model__ = model
 
@@ -70,33 +71,42 @@ def main():
     if os.path.isfile(WEIGHTS_FILE): 
         punctuator.load_weights(WEIGHTS_FILE)
 
-    #shuffle the training data
-    shuffle(X,Y)
+    for i in range(100):
+        shuffle(utterances)
+        print(utterances[0])
+
+        #create an instance of Punctutor and create training data
+        X, Y = punctuator.create_training_data(utterances[:300000], False)
+
+
+        #shuffle the training data
+        shuffle(X,Y)
  
-    denom_Y = Y.swapaxes(0,1).sum((0,1))
-    print ('Summary of Y:', denom_Y)
+        denom_Y = Y.swapaxes(0,1).sum((0,1))
+        print ('Summary of Y:', denom_Y)
 
-    print('shape of X:', X.shape)
-    print(X[0:10]) 
-    print('shape of Y:', Y.shape)
-    print(Y[0:10])
+        print('shape of X:', X.shape)
+        print(X[0:10]) 
+        print('shape of Y:', Y.shape)
+        print(Y[0:10])
 
-    #define optimizer and compile the model
-    opt = Adam(lr=0.007, beta_1=0.9, beta_2=0.999, decay=0.01)
-    punctuator.compile(opt, loss='categorical_crossentropy', metrics=['accuracy'])
+        #define optimizer and compile the model
+        opt = Adam(lr=0.007, beta_1=0.9, beta_2=0.999, decay=0.01)
+        punctuator.compile(opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    #split the training data into training set, test set, and dev set
-    t_size = int(X.shape[0] * 0.9)
-    train_X, train_Y = X[:t_size], Y[:t_size]
-    test_X, test_Y = X[t_size:-DEV_SIZE], Y[t_size:-DEV_SIZE]
-    dev_X, dev_Y = X[-DEV_SIZE:], Y[-DEV_SIZE:]
+        #split the training data into training set, test set, and dev set
+        t_size = int(X.shape[0] * 0.9)
+        train_X, train_Y = X[:t_size], Y[:t_size]
+        test_X, test_Y = X[t_size:-DEV_SIZE], Y[t_size:-DEV_SIZE]
+        dev_X, dev_Y = X[-DEV_SIZE:], Y[-DEV_SIZE:]
 
-    print (train_Y.swapaxes(0,1).sum((0,1)))
-    print (test_Y.swapaxes(0,1).sum((0,1)))
+        print (train_Y.swapaxes(0,1).sum((0,1)))
+        print (test_Y.swapaxes(0,1).sum((0,1)))
 
-    #train the model
-    punctuator.fit([train_X], train_Y, batch_size = BATCH,
-               epochs=EPOCH)
+        #train the model
+        punctuator.fit([train_X], train_Y, batch_size = BATCH,
+            epochs=EPOCH)
+
     punctuator.save_model(MODEL_FILE)
     punctuator.save_weights(WEIGHTS_FILE)
 

@@ -2,7 +2,7 @@ from model_factory import ModelFactory
 
 from keras.callbacks import ModelCheckpoint
 from keras.models import Model, load_model, Sequential
-from keras.layers import Dense, Activation, Dropout, Input, Masking, TimeDistributed, LSTM, Conv1D, Embedding, RepeatVector, Lambda, Dot, Multiply, Concatenate, Permute, Layer
+from keras.layers import Dense, Activation, Dropout, Input, Masking, TimeDistributed, LSTM, Conv1D, Embedding, RepeatVector, Lambda, Dot, Multiply, Concatenate, Permute, Layer, RNN
 from keras.layers import GRU, Bidirectional, BatchNormalization, Reshape, Flatten, ThresholdedReLU
 from keras.optimizers import Adam
 from keras import backend as K
@@ -11,10 +11,13 @@ import numpy as np
 
 from utils import *
 
-class InputLayer(Layer):
+class DBNCell(Layer):
     def __init__(self, output_dim, input_dim, trainable=False, name=None, dtype=None, dynamic=False, **kwargs):
         self.output_dim = output_dim
-        super(InputLayer, self).__init__(trainable=trainable, name=name, **kwargs)
+        self.output_size = output_dim
+        self.state_size = output_dim
+
+        super(DBNCell, self).__init__(trainable=trainable, name=name, **kwargs)
         self.w = self.add_weight(shape=(input_dim, output_dim),
                                  initializer='random_normal',
                                  trainable=trainable, name='w')
@@ -33,9 +36,9 @@ class InputLayer(Layer):
         self.set_weights(weights)
         f.close()
 
-    def call(self, x):
-        linear_tranform = K.matmul(x + K.squeeze(self.bv), self.w) + K.squeeze(self.bh)
-        return K.nn.relu(linear_tranform)
+    def call(self, x, _):
+        linear_transform = K.dot(x + K.squeeze(self.bv, axis=-1), self.w) + K.squeeze(self.bh, axis=-1)
+        return K.relu(linear_transform), [linear_transform] 
 
 class BidirectionalGruWithGru(ModelFactory):
     """ Factory class to create a model with
@@ -80,25 +83,20 @@ class BidirectionalGruWithGru(ModelFactory):
         #add embedding layer
         #X = embedding_layer(X_input)
 
-        dense1 = InputLayer(1800, 900, trainable=False)
-        dense2 = InputLayer(900, 1800, trainable=False)
-        dense3 = InputLayer(450, 900, trainable=False)
-        dense4 = InputLayer(225, 450, trainable=False)
-        dense5 = InputLayer(112, 225, trainable=False)
-        dense6 = InputLayer(50, 112, trainable=False)
-        dense1.load_weights('data/weights_dense_1.h5')
-        dense2.load_weights('data/weights_dense_2.h5')
-        dense3.load_weights('data/weights_dense_3.h5')
-        dense4.load_weights('data/weights_dense_4.h5')
-        dense5.load_weights('data/weights_dense_5.h5')
-        dense6.load_weights('data/weights_dense_6.h5')
-
-        X = dense1(X_input)
-        X = dense2(X)
-        X = dense3(X)
-        X = dense4(X)
-        X = dense5(X)
-        X = dense6(X)
+	cell1 = DBNCell(1800, 900, trainable=False)
+	cell2 = DBNCell(900, 1800, trainable=False)
+	cell3 = DBNCell(450, 900, trainable=False)
+	cell4 = DBNCell(225, 450, trainable=False)
+	cell5 = DBNCell(112, 225, trainable=False)
+	cell6 = DBNCell(50, 112, trainable=False)
+	cell1.load_weights('data/weights_dense_1.h5')
+	cell2.load_weights('data/weights_dense_2.h5')
+	cell3.load_weights('data/weights_dense_3.h5')
+	cell4.load_weights('data/weights_dense_4.h5')
+	cell5.load_weights('data/weights_dense_5.h5')
+	cell6.load_weights('data/weights_dense_6.h5')
+        cells = [cell1, cell2, cell3, cell4, cell5, cell6]
+        X = RNN(cells, return_sequences=True, trainable=False)(X_input)
 
         #add bidirectional GRU layer
         X = Bidirectional(GRU(n_d1, return_sequences = True))(X)
